@@ -6,7 +6,6 @@ module liquid_staking::weight_tests {
     use sui::coin::{Self};
     use sui::address;
     use sui_system::governance_test_utils::{
-        create_validators_with_stakes,
         create_sui_system_state_for_testing,
         advance_epoch_with_reward_amounts,
     };
@@ -16,6 +15,7 @@ module liquid_staking::weight_tests {
     use liquid_staking::fees::{Self};
     use liquid_staking::liquid_staking::{create_lst};
     use liquid_staking::weight::{Self, WeightHook};
+    use liquid_staking::test_utils::create_validators_with_stakes;
 
     public struct TEST has drop {}
 
@@ -39,6 +39,7 @@ module liquid_staking::weight_tests {
         staked_sui
     }
 
+    #[allow(deprecated_usage)]
     #[test_only]
     fun setup_sui_system(scenario: &mut Scenario, stakes: vector<u64>) {
         let validators = create_validators_with_stakes(stakes, scenario.ctx());
@@ -82,8 +83,6 @@ module liquid_staking::weight_tests {
         );
 
         weight_hook.rebalance(&mut system_state, &mut lst_info, scenario.ctx());
-
-        std::debug::print(&lst_info);
 
         assert!(lst_info.storage().validators().borrow(0).total_sui_amount() == 25 * MIST_PER_SUI, 0);
         assert!(lst_info.storage().validators().borrow(1).total_sui_amount() == 75 * MIST_PER_SUI, 0);
@@ -170,8 +169,6 @@ module liquid_staking::weight_tests {
 
         weight_hook.rebalance(&mut system_state, &mut lst_info, scenario.ctx());
 
-        std::debug::print(lst_info.storage().validators());
-
         assert!(lst_info.storage().validators().borrow(0).total_sui_amount() == 25 * MIST_PER_SUI, 0);
         assert!(lst_info.storage().validators().borrow(1).total_sui_amount() == 75 * MIST_PER_SUI, 0);
 
@@ -179,7 +176,6 @@ module liquid_staking::weight_tests {
         let mut custom_redeem_request = lst_info.custom_redeem_request(lst_to_unstake,&mut system_state, scenario.ctx());
         weight_hook.handle_custom_redeem_request(&mut system_state, &mut lst_info, &mut custom_redeem_request, scenario.ctx());
 
-        // std::debug::print(lst_info.storage().validators());
         assert!(lst_info.storage().validators().borrow(0).total_sui_amount() == 25 * MIST_PER_SUI - 2_500_000_000, 0);
         assert!(lst_info.storage().validators().borrow(1).total_sui_amount() == 75 * MIST_PER_SUI - 7_500_000_000, 0);
 

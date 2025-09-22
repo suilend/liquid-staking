@@ -1,3 +1,4 @@
+#[allow(deprecated_usage)]
 #[test_only]
 module liquid_staking::liquid_staking_tests {
     // uncomment this line to import the module
@@ -11,9 +12,9 @@ module liquid_staking::liquid_staking_tests {
     use liquid_staking::fees::{Self};
     use sui_system::governance_test_utils::{
         advance_epoch_with_reward_amounts,
-        create_validators_with_stakes,
         create_sui_system_state_for_testing,
     };
+    use liquid_staking::test_utils::create_validators_with_stakes;
 
     /* Constants */
     const MIST_PER_SUI: u64 = 1_000_000_000;
@@ -55,7 +56,7 @@ module liquid_staking::liquid_staking_tests {
 
         scenario.next_tx(@0x0);
 
-        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let system_state = scenario.take_shared<SuiSystemState>();
 
         let (admin_cap, lst_info) = create_lst<TEST>(
             fees::new_builder(scenario.ctx())
@@ -125,7 +126,7 @@ module liquid_staking::liquid_staking_tests {
 
         setup_sui_system(&mut scenario, vector[100, 100]);
 
-        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let system_state = scenario.take_shared<SuiSystemState>();
 
         let mut treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
         let coins = treasury_cap.mint(1000 * MIST_PER_SUI, scenario.ctx());
@@ -537,7 +538,7 @@ module liquid_staking::liquid_staking_tests {
 
         scenario.next_tx(@0x0);
 
-        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let system_state = scenario.take_shared<SuiSystemState>();
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
             fees::new_builder(scenario.ctx())
