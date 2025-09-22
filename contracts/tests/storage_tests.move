@@ -1,3 +1,4 @@
+#[allow(deprecated_usage)]
 #[test_only]
 module liquid_staking::storage_tests {
     /* Tests */
@@ -13,15 +14,12 @@ module liquid_staking::storage_tests {
     use sui::balance::{Self};
     use liquid_staking::storage::{new};
     use sui::sui::SUI;
-    use std::macros::do;
+    use liquid_staking::test_utils::create_validators_with_stakes;
+    use sui_system::governance_test_utils::create_sui_system_state_for_testing;
+
 
     #[test_only]
     fun setup_sui_system(scenario: &mut Scenario, stakes: vector<u64>) {
-        use sui_system::governance_test_utils::{
-            create_validators_with_stakes,
-            create_sui_system_state_for_testing,
-        };
-
         let validators = create_validators_with_stakes(stakes, scenario.ctx());
         create_sui_system_state_for_testing(validators, 0, 0, scenario.ctx());
 
@@ -198,8 +196,6 @@ module liquid_staking::storage_tests {
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
         storage.refresh(&mut system_state, scenario.ctx());
-
-        std::debug::print(&storage);
 
         assert!(storage.validators().length() == 1, 0);
         assert!(storage.total_sui_supply() == 150 * MIST_PER_SUI, 0);
