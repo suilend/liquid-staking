@@ -127,6 +127,22 @@ module liquid_staking::liquid_staking {
         &self.lst
     }
 
+    public fun lst_amount_to_sui_amount<P>(
+        self: &LiquidStakingInfo<P>, 
+        lst_amount: u64
+    ): u64 {
+        let total_sui_supply = self.total_sui_supply();
+        let total_lst_supply = self.total_lst_supply();
+
+        assert!(total_lst_supply > 0, EZeroLstSupply);
+
+        let sui_amount = (total_sui_supply as u128)
+            * (lst_amount as u128) 
+            / (total_lst_supply as u128);
+
+        sui_amount as u64
+    }
+
     #[test_only]
     public fun accrued_spread_fees<P>(self: &LiquidStakingInfo<P>): u64 {
         self.accrued_spread_fees
@@ -546,21 +562,5 @@ module liquid_staking::liquid_staking {
          / (total_sui_supply as u128);
 
         lst_amount as u64
-    }
-
-    public(package) fun lst_amount_to_sui_amount<P>(
-        self: &LiquidStakingInfo<P>, 
-        lst_amount: u64
-    ): u64 {
-        let total_sui_supply = self.total_sui_supply();
-        let total_lst_supply = self.total_lst_supply();
-
-        assert!(total_lst_supply > 0, EZeroLstSupply);
-
-        let sui_amount = (total_sui_supply as u128)
-            * (lst_amount as u128) 
-            / (total_lst_supply as u128);
-
-        sui_amount as u64
     }
 }
