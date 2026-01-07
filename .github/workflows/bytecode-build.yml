@@ -1,0 +1,18 @@
+name: bytecode-build
+run-name: Building Sui package bytecode
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: mysten/sui-tools:mainnet
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Sui package and dump bytecode
+        run: sui move build --dump-bytecode-as-base64 --ignore-chain > bytecode.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bytecode-${{ github.sha }}
+          path: bytecode.json
+          retention-days: 30

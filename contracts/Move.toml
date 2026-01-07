@@ -1,6 +1,6 @@
 [package]
 name = "liquid_staking"
-edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
+edition = "2024" # edition = "legacy" to use legacy (pre-2024) Move
 published-at = "0xc89f4edb8f4dafb97934dbfce11ac132c07759c3bdda6f31d09c7fdca3b80b76"
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
