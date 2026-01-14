@@ -127,6 +127,30 @@ module liquid_staking::liquid_staking {
         &self.lst
     }
 
+    /// Returns the net SUI amount received when redeeming 1 LST token (after fees).
+    ///
+    /// This function calculates how much SUI (in MIST) a user would receive when
+    /// redeeming 1 LST token (1_000_000_000 of LST), after accounting
+    /// for redemption fees.
+    ///
+    /// A return value of 950_000_000 means 1 LST redeems for 0.95 SUI (after fees)
+    ///
+    public fun net_redemption_amount<T>(self: &LiquidStakingInfo<T>): u64 {
+        let one_lst = 1_000_000_000;
+
+        // Get gross redemption amount: 1 LST = X SUI (before fees)
+        let gross_sui_amount = self.lst_amount_to_sui_amount(one_lst);
+
+        // Calculate redemption fee
+        let redeem_fee = self.fee_config().calculate_redeem_fee(gross_sui_amount);
+
+        // Get net SUI amount after fees (protected against underflow)
+        assert!(gross_sui_amount >= redeem_fee, ERedeemInvariantViolated);
+        let net_sui_amount = gross_sui_amount - redeem_fee;
+
+        net_sui_amount
+    }
+
     #[test_only]
     public fun accrued_spread_fees<P>(self: &LiquidStakingInfo<P>): u64 {
         self.accrued_spread_fees
