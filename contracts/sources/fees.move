@@ -15,11 +15,11 @@ module liquid_staking::fees {
         staked_sui_redeem_fee_bps: u64, // unused
         spread_fee_bps: u64,
         custom_redeem_fee_bps: u64, // unused
-        extra_fields: Bag // in case we add other fees later
+        extra_fields: Bag, // in case we add other fees later
     }
 
     public struct FeeConfigBuilder {
-        fields: Bag
+        fields: Bag,
     }
 
     public fun sui_mint_fee_bps(fees: &FeeConfig): u64 {
@@ -65,7 +65,10 @@ module liquid_staking::fees {
         self
     }
 
-    public fun set_staked_sui_redeem_fee_bps(mut self: FeeConfigBuilder, fee: u64): FeeConfigBuilder {
+    public fun set_staked_sui_redeem_fee_bps(
+        mut self: FeeConfigBuilder,
+        fee: u64,
+    ): FeeConfigBuilder {
         bag::add(&mut self.fields, b"staked_sui_redeem_fee_bps", fee);
         self
     }
@@ -84,7 +87,7 @@ module liquid_staking::fees {
         let FeeConfigBuilder { mut fields } = builder;
 
         let fees = FeeConfig {
-            sui_mint_fee_bps:if (bag::contains(&fields, b"sui_mint_fee_bps")) {
+            sui_mint_fee_bps: if (bag::contains(&fields, b"sui_mint_fee_bps")) {
                 bag::remove(&mut fields, b"sui_mint_fee_bps")
             } else {
                 0
@@ -114,7 +117,7 @@ module liquid_staking::fees {
             } else {
                 0
             },
-            extra_fields: fields
+            extra_fields: fields,
         };
 
         validate_fees(&fees);
@@ -128,7 +131,7 @@ module liquid_staking::fees {
     }
 
     // Note that while it's technically exploitable, we allow lsts to be created with 0 mint/redeem fees.
-    // This is because having a 0 fee LST is useful in certain cases where mint/redemption can only be done by 
+    // This is because having a 0 fee LST is useful in certain cases where mint/redemption can only be done by
     // a single party. It is up to the pool creator to ensure that the fees are set correctly.
     fun validate_fees(fees: &FeeConfig) {
         assert!(fees.sui_mint_fee_bps <= MAX_BPS, EInvalidFeeConfig);
@@ -166,7 +169,8 @@ module liquid_staking::fees {
         (((sui_amount as u128) * (self.custom_redeem_fee_bps as u128) + 9999) / 10_000) as u64
     }
 
-    #[test_only] use sui::test_scenario::{Self, Scenario};
+    #[test_only]
+    use sui::test_scenario;
 
     #[test]
     public fun test_validate_fees_happy() {
@@ -178,12 +182,12 @@ module liquid_staking::fees {
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
             custom_redeem_fee_bps: 10_000,
-            extra_fields: bag::new(scenario.ctx())
+            extra_fields: bag::new(scenario.ctx()),
         };
 
         validate_fees(&fees);
 
-        sui::test_utils::destroy(fees);
+        std::unit_test::destroy(fees);
         scenario.end();
     }
 
@@ -198,12 +202,12 @@ module liquid_staking::fees {
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
             custom_redeem_fee_bps: 10_000,
-            extra_fields: bag::new(scenario.ctx())
+            extra_fields: bag::new(scenario.ctx()),
         };
 
         validate_fees(&fees);
 
-        sui::test_utils::destroy(fees);
+        std::unit_test::destroy(fees);
         scenario.end();
     }
 
@@ -217,15 +221,15 @@ module liquid_staking::fees {
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
             custom_redeem_fee_bps: 10_000,
-            extra_fields: bag::new(scenario.ctx())
+            extra_fields: bag::new(scenario.ctx()),
         };
 
-        assert!(calculate_mint_fee(&fees, 1) == 1, 0);
-        assert!(calculate_mint_fee(&fees, 99) == 1, 0);
-        assert!(calculate_mint_fee(&fees, 100) == 1, 0);
-        assert!(calculate_mint_fee(&fees, 101) == 2, 0);
+        assert!(calculate_mint_fee(&fees, 1) == 1);
+        assert!(calculate_mint_fee(&fees, 99) == 1);
+        assert!(calculate_mint_fee(&fees, 100) == 1);
+        assert!(calculate_mint_fee(&fees, 101) == 2);
 
-        sui::test_utils::destroy(fees);
+        std::unit_test::destroy(fees);
         scenario.end();
     }
 
@@ -239,15 +243,15 @@ module liquid_staking::fees {
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
             custom_redeem_fee_bps: 10_000,
-            extra_fields: bag::new(scenario.ctx())
+            extra_fields: bag::new(scenario.ctx()),
         };
 
-        assert!(calculate_redeem_fee(&fees, 1) == 1, 0);
-        assert!(calculate_redeem_fee(&fees, 99) == 1, 0);
-        assert!(calculate_redeem_fee(&fees, 100) == 1, 0);
-        assert!(calculate_redeem_fee(&fees, 101) == 2, 0);
+        assert!(calculate_redeem_fee(&fees, 1) == 1);
+        assert!(calculate_redeem_fee(&fees, 99) == 1);
+        assert!(calculate_redeem_fee(&fees, 100) == 1);
+        assert!(calculate_redeem_fee(&fees, 101) == 2);
 
-        sui::test_utils::destroy(fees);
+        std::unit_test::destroy(fees);
         scenario.end();
     }
 }

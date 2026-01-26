@@ -1,12 +1,12 @@
 [package]
 name = "liquid_staking"
-edition = "2024" # edition = "legacy" to use legacy (pre-2024) Move
+edition = "2024"
 published-at = "0xc89f4edb8f4dafb97934dbfce11ac132c07759c3bdda6f31d09c7fdca3b80b76"
 # license = ""           # e.g., "MIT", "GPL", "Apache 2.0"
 # authors = ["..."]      # e.g., ["Joe Smith (joesmith@noemail.com)", "John Snow (johnsnow@noemail.com)"]
 
 [dependencies]
-
+sui_system = { system = "sui_system" }
 
 # For remote import, use the `{ git = "...", subdir = "...", rev = "..." }`.
 # Revision can be a branch, a tag, and a commit hash.
@@ -19,21 +19,6 @@ published-at = "0xc89f4edb8f4dafb97934dbfce11ac132c07759c3bdda6f31d09c7fdca3b80b
 # override use `override = true`
 # Override = { local = "../conflicting/version", override = true }
 
-[addresses]
-# liquid_staking = "0x0"
-liquid_staking = "0xb0575765166030556a6eafd3b1b970eba8183ff748860680245b9edd41c716e7"
-
-# Named addresses will be accessible in Move as `@name`. They're also exported:
-# for example, `std = "0x1"` is exported by the Standard Library.
-# alice = "0xA11CE"
-
-[dev-dependencies]
-# The dev-dependencies section allows overriding dependencies for `--test` and
-# `--dev` modes. You can introduce test-only dependencies here.
-# Local = { local = "../path/to/dev-build" }
-
-[dev-addresses]
-# The dev-addresses section allows overwriting named addresses for the `--test`
-# and `--dev` modes.
-# alice = "0xB0B"
-
+#[addresses]
+#liquid_staking = "0x0"
+#liquid_staking = "0xb0575765166030556a6eafd3b1b970eba8183ff748860680245b9edd41c716e7"

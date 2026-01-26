@@ -1,21 +1,16 @@
-/// This module allows for the dynamic rebalancing of validator stakes based 
+/// This module allows for the dynamic rebalancing of validator stakes based
 /// on a set of validator addresses and weights. Rebalance can be called permissionlessly
 module liquid_staking::weight {
-    use sui_system::sui_system::{SuiSystemState};
-    use liquid_staking::liquid_staking::{LiquidStakingInfo, AdminCap};
-    use liquid_staking::fees::{FeeConfig};
-    use sui::vec_map::{Self, VecMap};
-    use sui::bag::{Self, Bag};
-    use liquid_staking::liquid_staking::{CustomRedeemRequest};
-    use liquid_staking::version::{Self, Version};
-    use sui::package;
-    use sui::coin::Coin;
-    use sui::sui::SUI;
-    use liquid_staking::registry::{Registry};
-    use std::type_name::{Self, TypeName};
-    use liquid_staking::events::{emit_event};
-    use std::string::String;
-    use std::ascii;
+    use liquid_staking::{
+        events::emit_event,
+        fees::FeeConfig,
+        liquid_staking::{LiquidStakingInfo, AdminCap, CustomRedeemRequest},
+        registry::Registry,
+        version::{Self, Version}
+    };
+    use std::{ascii, string::String, type_name::{Self, TypeName}};
+    use sui::{bag::{Self, Bag}, coin::Coin, package, sui::SUI, vec_map::{Self, VecMap}};
+    use sui_system::sui_system::SuiSystemState;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -26,11 +21,11 @@ module liquid_staking::weight {
         total_weight: u64,
         admin_cap: AdminCap<P>,
         version: Version,
-        extra_fields: Bag
+        extra_fields: Bag,
     }
 
     public struct WeightHookAdminCap<phantom P> has key, store {
-        id: UID
+        id: UID,
     }
 
     public struct WEIGHT has drop {}
@@ -43,7 +38,7 @@ module liquid_staking::weight {
     public struct CreateEvent has copy, drop {
         typename: TypeName,
         weight_hook_id: ID,
-        weight_hook_admin_cap_id: ID
+        weight_hook_admin_cap_id: ID,
     }
 
     fun init(otw: WEIGHT, ctx: &mut TxContext) {
@@ -52,20 +47,20 @@ module liquid_staking::weight {
 
     public fun new<P>(
         admin_cap: AdminCap<P>,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ): (WeightHook<P>, WeightHookAdminCap<P>) {
         let weight_hook = WeightHook {
-                id: object::new(ctx),
-                validator_addresses_and_weights: vec_map::empty(),
-                total_weight: 0,
-                admin_cap,
-                version: version::new(CURRENT_VERSION),
-                extra_fields: bag::new(ctx)
+            id: object::new(ctx),
+            validator_addresses_and_weights: vec_map::empty(),
+            total_weight: 0,
+            admin_cap,
+            version: version::new(CURRENT_VERSION),
+            extra_fields: bag::new(ctx),
         };
         let weight_hook_admin_cap = WeightHookAdminCap { id: object::new(ctx) };
 
         emit_event(CreateEvent {
-            typename: type_name::get<P>(),
+            typename: type_name::with_defining_ids<P>(),
             weight_hook_id: *weight_hook.id.as_inner(),
             weight_hook_admin_cap_id: *weight_hook_admin_cap.id.as_inner(),
         });
@@ -83,7 +78,7 @@ module liquid_staking::weight {
             liquid_staking_info,
             RegistryInfo {
                 weight_hook_id: *self.id.as_inner(),
-            }
+            },
         );
     }
 
@@ -131,7 +126,7 @@ module liquid_staking::weight {
         self: &mut WeightHook<P>,
         system_state: &mut SuiSystemState,
         liquid_staking_info: &mut LiquidStakingInfo<P>,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
         liquid_staking_info.refresh(system_state, ctx);
         let total_sui_supply = liquid_staking_info.storage().total_sui_supply(); // we want to allocate the unaccrued spread fees as well
@@ -144,12 +139,14 @@ module liquid_staking::weight {
         system_state: &mut SuiSystemState,
         liquid_staking_info: &mut LiquidStakingInfo<P>,
         request: &mut CustomRedeemRequest<P>,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
         liquid_staking_info.refresh(system_state, ctx);
 
         let total_sui_supply = liquid_staking_info.storage().total_sui_supply(); // we want to allocate the unaccrued spread fees as well
-        let sui_unstake_amount = liquid_staking_info.lst_amount_to_sui_amount(request.lst().value());
+        let sui_unstake_amount = liquid_staking_info.lst_amount_to_sui_amount(request
+            .lst()
+            .value());
         let total_sui_to_allocate = total_sui_supply - sui_unstake_amount;
 
         self.rebalance_internal(system_state, liquid_staking_info, total_sui_to_allocate, ctx);
@@ -169,17 +166,21 @@ module liquid_staking::weight {
         let admin_cap = &self.admin_cap;
 
         liquid_staking_info.update_metadata(
-            admin_cap, metadata, name, symbol, description, icon_url
+            admin_cap,
+            metadata,
+            name,
+            symbol,
+            description,
+            icon_url,
         );
     }
-
 
     fun rebalance_internal<P>(
         self: &mut WeightHook<P>,
         system_state: &mut SuiSystemState,
         liquid_staking_info: &mut LiquidStakingInfo<P>,
         total_sui_to_allocate: u64,
-        ctx: &mut TxContext
+        ctx: &mut TxContext,
     ) {
         self.version.assert_version_and_upgrade(CURRENT_VERSION);
         if (self.total_weight == 0) {
@@ -197,14 +198,21 @@ module liquid_staking::weight {
         });
 
         // 2. calculate current and target amounts of sui for each validator
-        let (validator_addresses, validator_weights) = validator_addresses_and_weights.into_keys_values();
+        let (
+            validator_addresses,
+            validator_weights,
+        ) = validator_addresses_and_weights.into_keys_values();
 
-        let validator_target_amounts  = validator_weights.map!(|weight| {
-            ((total_sui_to_allocate as u128) * (weight as u128) / (self.total_weight as u128)) as u64
+        let validator_target_amounts = validator_weights.map!(|weight| {
+            (
+                (total_sui_to_allocate as u128) * (weight as u128) / (self.total_weight as u128),
+            ) as u64
         });
 
         let validator_current_amounts = validator_addresses.map_ref!(|validator_address| {
-            let validator_index = liquid_staking_info.storage().find_validator_index_by_address(*validator_address);
+            let validator_index = liquid_staking_info
+                .storage()
+                .find_validator_index_by_address(*validator_address);
             if (validator_index >= liquid_staking_info.storage().validators().length()) {
                 return 0
             };
@@ -221,7 +229,7 @@ module liquid_staking::weight {
                     system_state,
                     validator_addresses[i],
                     validator_current_amounts[i] - validator_target_amounts[i],
-                    ctx
+                    ctx,
                 );
             };
         });
@@ -234,16 +242,13 @@ module liquid_staking::weight {
                     system_state,
                     validator_addresses[i],
                     validator_target_amounts[i] - validator_current_amounts[i],
-                    ctx
+                    ctx,
                 );
             };
         });
     }
 
-    public fun eject<P>(
-        mut self: WeightHook<P>,
-        admin_cap: WeightHookAdminCap<P>,
-    ): AdminCap<P> {
+    public fun eject<P>(mut self: WeightHook<P>, admin_cap: WeightHookAdminCap<P>): AdminCap<P> {
         self.version.assert_version_and_upgrade(CURRENT_VERSION);
 
         let WeightHookAdminCap { id } = admin_cap;
@@ -256,10 +261,7 @@ module liquid_staking::weight {
         admin_cap
     }
 
-    public fun admin_cap<P>(
-        self: &WeightHook<P>, 
-        _: &WeightHookAdminCap<P>
-    ): &AdminCap<P> {
+    public fun admin_cap<P>(self: &WeightHook<P>, _: &WeightHookAdminCap<P>): &AdminCap<P> {
         self.version.assert_version(CURRENT_VERSION);
 
         &self.admin_cap

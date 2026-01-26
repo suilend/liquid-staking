@@ -1,15 +1,14 @@
 module liquid_staking::registry {
+    use liquid_staking::{liquid_staking::{AdminCap, LiquidStakingInfo}, version::{Self, Version}};
+    use std::type_name;
     use sui::bag::{Self, Bag};
-    use liquid_staking::liquid_staking::{AdminCap, LiquidStakingInfo};
-    use std::type_name::{Self};
-    use liquid_staking::version::{Self, Version};
 
     const CURRENT_VERSION: u16 = 1;
 
     public struct Registry has key, store {
         id: UID,
         version: Version,
-        table: Bag, 
+        table: Bag,
     }
 
     public struct Entry<ExtraInfoType: store> has copy, store {
@@ -43,25 +42,27 @@ module liquid_staking::registry {
 
     public(package) fun add_to_registry<CoinType, ExtraInfoType: store>(
         self: &mut Registry,
-        admin_cap: &AdminCap<CoinType>, 
+        admin_cap: &AdminCap<CoinType>,
         liquid_staking_info: &LiquidStakingInfo<CoinType>,
         extra_info: ExtraInfoType,
     ) {
         self.version.assert_version_and_upgrade(CURRENT_VERSION);
 
-        self.table.add(
-            type_name::get<CoinType>(),
-            Entry {
-                admin_cap_id: object::id(admin_cap),
-                liquid_staking_info_id: object::id(liquid_staking_info),
-                extra_info,
-            }
-        );
+        self
+            .table
+            .add(
+                type_name::with_defining_ids<CoinType>(),
+                Entry {
+                    admin_cap_id: object::id(admin_cap),
+                    liquid_staking_info_id: object::id(liquid_staking_info),
+                    extra_info,
+                },
+            );
     }
 
     public(package) fun get_entry<CoinType, ExtraInfoType: store>(
         self: &Registry,
     ): &Entry<ExtraInfoType> {
-        self.table.borrow(type_name::get<CoinType>())
+        self.table.borrow(type_name::with_defining_ids<CoinType>())
     }
 }
