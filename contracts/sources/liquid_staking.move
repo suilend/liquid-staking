@@ -303,6 +303,9 @@ module liquid_staking::liquid_staking {
         };
         self.fees.join(sui.split(redeem_fee_amount as u64));
 
+        // Abort if fees consumed entire redemption amount
+        assert!(sui.value() > 0, ERedeemInvariantViolated);
+
         emit_event(RedeemEvent {
             typename: type_name::get<P>(),
             lst_amount_in: lst.value(),
