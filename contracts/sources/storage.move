@@ -373,8 +373,6 @@ module liquid_staking::storage {
             return 0
         };
 
-        let target_unstake_sui_amount = max(target_unstake_sui_amount, MIN_STAKE_THRESHOLD);
-
         let fungible_staked_sui_amount = validator_info.active_stake.borrow().value();
         let total_sui_amount = get_sui_amount(
             &validator_info.exchange_rate, 
