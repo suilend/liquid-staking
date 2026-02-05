@@ -943,12 +943,12 @@ module liquid_staking::storage_tests {
             scenario.ctx()
         );
 
-        assert!(amount == MIST_PER_SUI, 0);
+        assert!(amount == 2, 0);
         assert!(storage.validators().length() == 1, 0);
         assert!(storage.total_sui_supply() == 200 * MIST_PER_SUI, 0);
-        assert!(storage.sui_pool().value() == MIST_PER_SUI, 0);
-        assert!(storage.validators()[0].total_sui_amount() == 199 * MIST_PER_SUI, 0);
-        assert!(storage.validators()[0].active_stake().borrow().value() == 99_500_000_000, 0);
+        assert!(storage.sui_pool().value() == 2, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 200 * MIST_PER_SUI - 2, 0);
+        assert!(storage.validators()[0].active_stake().borrow().value() == 100 * MIST_PER_SUI - 1, 0);
         assert!(storage.validators()[0].inactive_stake().is_none(), 0);
 
         sui::test_utils::destroy(storage);
@@ -1453,6 +1453,61 @@ module liquid_staking::storage_tests {
             scenario.next_tx(@0x0);
         });
 
+        sui::test_utils::destroy(storage);
+        scenario.end();
+    }
+
+    #[test]
+    fun test_unstake_rounding_loss_regression() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        // Single validator with 500 SUI
+        setup_sui_system(&mut scenario, vector[500]);
+
+        // User stakes 200 SUI → validator has 700 tokens total
+        let staked_sui = stake_with(0, 200, &mut scenario);
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+        // Add 400 SUI rewards → rate becomes 1100:700 = 11:7
+        advance_epoch_with_reward_amounts(0, 400, &mut scenario);
+
+        scenario.next_tx(@0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let mut storage = new(scenario.ctx());
+
+        storage.refresh(&mut system_state, scenario.ctx());
+        storage.join_stake(&mut system_state, staked_sui, scenario.ctx());
+
+        let initial_total = storage.total_sui_supply();
+        let initial_validator_total = storage.validators()[0].total_sui_amount();
+        let initial_sui_pool = storage.sui_pool().value();
+
+        // Unstake minimum (1 SUI due to MIN_STAKE_THRESHOLD)
+        let redeemed = storage.unstake_approx_n_sui_from_active_stake(
+            &mut system_state,
+            0,
+            MIST_PER_SUI,
+            scenario.ctx()
+        );
+
+        let final_total = storage.total_sui_supply();
+        let final_validator_total = storage.validators()[0].total_sui_amount();
+        let final_sui_pool = storage.sui_pool().value();
+
+        // total_sui_supply should not change during unstaking.
+        // We're just moving SUI from staked form to liquid form.
+        assert!(final_total == initial_total);
+
+        // The redeemed amount should equal the increase in sui_pool
+        assert!(final_sui_pool == initial_sui_pool + redeemed);
+
+        // validator_total decreases by exactly the redeemed amount
+        assert!(final_validator_total == initial_validator_total - redeemed);
+
+        // total_sui_supply = sui_pool + validator totals
+        assert!(final_total == final_sui_pool + final_validator_total);
+
+        test_scenario::return_shared(system_state);
         sui::test_utils::destroy(storage);
         scenario.end();
     }

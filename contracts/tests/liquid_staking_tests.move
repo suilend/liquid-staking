@@ -811,4 +811,50 @@ module liquid_staking::liquid_staking_tests {
 
         scenario.end(); 
     }
+
+    #[test]
+    fun test_exchange_rate_gap() {
+        use sui_system::sui_system;
+        use std::unit_test;
+
+        let mut scenario = test_scenario::begin(@0x0);
+
+        // activate validator
+        setup_sui_system(&mut scenario, vector[100]);
+
+        scenario.next_tx(@0x0);
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        sui_system::set_epoch_for_testing(&mut system_state, scenario.ctx().epoch() + 1);
+        scenario.next_epoch(@0x0);
+
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
+            fees::new_builder(scenario.ctx())
+                .set_sui_mint_fee_bps(100)
+                .set_redeem_fee_bps(100)
+                .to_fee_config(),
+            coin::create_treasury_cap_for_testing(scenario.ctx()),
+            scenario.ctx()
+        );
+
+        assert!(lst_info.total_lst_supply() == 0, 0);
+        assert!(lst_info.storage().total_sui_supply() == 0, 0);
+
+        let sui = coin::mint_for_testing<SUI>(200 * MIST_PER_SUI, scenario.ctx());
+        let lst = lst_info.mint(&mut system_state, sui, scenario.ctx());
+
+        lst_info.increase_validator_stake(
+            &admin_cap, 
+            &mut system_state, 
+            @0x0,
+            200 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(system_state);
+        unit_test::destroy(admin_cap);
+        unit_test::destroy(lst);
+        unit_test::destroy(lst_info);
+
+        scenario.end();
+    }
 }

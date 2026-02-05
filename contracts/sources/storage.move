@@ -148,6 +148,8 @@ module liquid_staking::storage {
                 // technically this is using a stale exchange rate, but it doesn't matter because we're unstaking everything.
                 // this is done before fetching the exchange rate because i don't want the function to abort if an epoch is skipped.
                 self.unstake_approx_n_sui_from_validator(system_state, i, MAX_SUI_SUPPLY, ctx);
+                // Reconcile total_sui_amount accounting after full unstake
+                self.refresh_validator_info(i);
             };
 
             if (self.validator_infos[i].is_empty()) {
@@ -373,8 +375,6 @@ module liquid_staking::storage {
             return 0
         };
 
-        let target_unstake_sui_amount = max(target_unstake_sui_amount, MIN_STAKE_THRESHOLD);
-
         let fungible_staked_sui_amount = validator_info.active_stake.borrow().value();
         let total_sui_amount = get_sui_amount(
             &validator_info.exchange_rate, 
@@ -495,9 +495,7 @@ module liquid_staking::storage {
             .borrow_mut()
             .split_fungible_staked_sui(fungible_staked_sui_amount, ctx);
 
-        self.refresh_validator_info(validator_index);
-
-        system_state.redeem_fungible_staked_sui(stake, ctx)
+        self.redeem_and_update_accounting(system_state, validator_index, stake, ctx)
     }
 
     fun take_active_stake(
@@ -509,9 +507,7 @@ module liquid_staking::storage {
         let validator_info = &mut self.validator_infos[validator_index];
         let fungible_staked_sui = validator_info.active_stake.extract();
 
-        self.refresh_validator_info(validator_index);
-
-        system_state.redeem_fungible_staked_sui(fungible_staked_sui, ctx)
+        self.redeem_and_update_accounting(system_state, validator_index, fungible_staked_sui, ctx)
     }
 
     fun split_from_inactive_stake(
@@ -540,6 +536,27 @@ module liquid_staking::storage {
         self.refresh_validator_info(validator_index);
 
         stake
+    }
+
+    /// Redeems fungible staked SUI and updates accounting based on actual redeemed amount.
+    fun redeem_and_update_accounting(
+        self: &mut Storage,
+        system_state: &mut SuiSystemState,
+        validator_index: u64,
+        fungible_staked_sui: FungibleStakedSui,
+        ctx: &TxContext
+    ): Balance<SUI> {
+        let redeemed_sui = system_state.redeem_fungible_staked_sui(fungible_staked_sui, ctx);
+        let redeemed_amount = redeemed_sui.value();
+
+        // Update accounting based on actual redeemed amount.
+        // The validator's total_sui_amount may drift slightly from get_sui_amount()
+        // but this will be reconciled during the next epoch refresh
+        let validator_info = &mut self.validator_infos[validator_index];
+        self.total_sui_supply = self.total_sui_supply - redeemed_amount;
+        validator_info.total_sui_amount = validator_info.total_sui_amount - redeemed_amount;
+
+        redeemed_sui
     }
 
     /* Private functions */
@@ -575,7 +592,13 @@ module liquid_staking::storage {
         );
 
         let exchange_rates = system_state.pool_exchange_rates(&staking_pool_id);
-        let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
+        // Search backwards to handle newly activated validators that may only
+        // have an exchange rate at their activation epoch, not the current epoch.
+        let mut cur_epoch = ctx.epoch();
+        while (!exchange_rates.contains(cur_epoch)) {
+            cur_epoch = cur_epoch - 1;
+        };
+        let latest_exchange_rate = exchange_rates.borrow(cur_epoch);
 
         self.validator_infos.push_back(ValidatorInfo {
             staking_pool_id: copy staking_pool_id,
