@@ -590,7 +590,13 @@ module liquid_staking::storage {
         );
 
         let exchange_rates = system_state.pool_exchange_rates(&staking_pool_id);
-        let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
+        // Search backwards to handle newly activated validators that may only
+        // have an exchange rate at their activation epoch, not the current epoch.
+        let mut cur_epoch = ctx.epoch();
+        while (!exchange_rates.contains(cur_epoch)) {
+            cur_epoch = cur_epoch - 1;
+        };
+        let latest_exchange_rate = exchange_rates.borrow(cur_epoch);
 
         self.validator_infos.push_back(ValidatorInfo {
             staking_pool_id: copy staking_pool_id,
