@@ -148,6 +148,8 @@ module liquid_staking::storage {
                 // technically this is using a stale exchange rate, but it doesn't matter because we're unstaking everything.
                 // this is done before fetching the exchange rate because i don't want the function to abort if an epoch is skipped.
                 self.unstake_approx_n_sui_from_validator(system_state, i, MAX_SUI_SUPPLY, ctx);
+                // Reconcile total_sui_amount accounting after full unstake
+                self.refresh_validator_info(i);
             };
 
             if (self.validator_infos[i].is_empty()) {
