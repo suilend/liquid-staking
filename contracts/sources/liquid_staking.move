@@ -37,6 +37,7 @@ module liquid_staking::liquid_staking {
         lst_treasury_cap: TreasuryCap<P>,
         fee_config: Cell<FeeConfig>,
         fees: Balance<SUI>,
+        suilend_fees: Balance<SUI>,
         accrued_spread_fees: u64,
         storage: Storage,
         version: Version,
@@ -64,14 +65,16 @@ module liquid_staking::liquid_staking {
         typename: TypeName,
         sui_amount_in: u64,
         lst_amount_out: u64,
-        fee_amount: u64
+        admin_fee_amount: u64,
+        suilend_fee_amount: u64
     }
 
     public struct RedeemEvent has copy, drop {
         typename: TypeName,
         lst_amount_in: u64,
         sui_amount_out: u64,
-        fee_amount: u64
+        admin_fee_amount: u64,
+        suilend_fee_amount: u64
     }
 
     public struct DecreaseValidatorStakeEvent has copy, drop {
@@ -237,6 +240,7 @@ module liquid_staking::liquid_staking {
                 lst_treasury_cap: lst_treasury_cap,
                 fee_config: cell::new(fee_config),
                 fees: balance::zero(),
+                suilend_fees: balance::zero(),
                 accrued_spread_fees: 0,
                 storage,
                 version: version::new(CURRENT_VERSION),
@@ -262,7 +266,10 @@ module liquid_staking::liquid_staking {
 
         // deduct fees
         let mint_fee_amount = self.fee_config.get().calculate_mint_fee(sui_balance.value());
-        self.fees.join(sui_balance.split(mint_fee_amount));
+        let suilend_fee_amount = mint_fee_amount / 2; // floor(50%) to Suilend
+        let admin_fee_amount = mint_fee_amount - suilend_fee_amount; // remainder to LST admin
+        self.suilend_fees.join(sui_balance.split(suilend_fee_amount));
+        self.fees.join(sui_balance.split(admin_fee_amount));
         
         let lst_mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
         assert!(lst_mint_amount > 0, EZeroLstMinted);
@@ -271,7 +278,8 @@ module liquid_staking::liquid_staking {
             typename: type_name::get<P>(),
             sui_amount_in,
             lst_amount_out: lst_mint_amount,
-            fee_amount: mint_fee_amount
+            admin_fee_amount: admin_fee_amount,
+            suilend_fee_amount: suilend_fee_amount
         });
 
         let lst = self.lst_treasury_cap.mint(lst_mint_amount, ctx);
@@ -325,13 +333,17 @@ module liquid_staking::liquid_staking {
         } else {
             self.fee_config.get().calculate_redeem_fee(sui.value())
         };
-        self.fees.join(sui.split(redeem_fee_amount as u64));
+        let suilend_fee_amount = redeem_fee_amount / 2; // floor(50%) to Suilend
+        let admin_fee_amount = redeem_fee_amount - suilend_fee_amount; // remainder to LST admin
+        self.suilend_fees.join(sui.split(suilend_fee_amount));
+        self.fees.join(sui.split(admin_fee_amount));
 
         emit_event(RedeemEvent {
             typename: type_name::get<P>(),
             lst_amount_in: lst.value(),
             sui_amount_out: sui.value(),
-            fee_amount: redeem_fee_amount
+            admin_fee_amount: admin_fee_amount,
+            suilend_fee_amount: suilend_fee_amount
         });
 
         // invariant: sui_out / lst_in <= old_sui_supply / old_lst_supply
