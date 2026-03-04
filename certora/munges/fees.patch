@@ -1,0 +1,13 @@
+diff --git a/contracts/sources/fees.move b/contracts/sources/fees.move
+index 33df151..caa341c 100644
+--- a/contracts/sources/fees.move
++++ b/contracts/sources/fees.move
+@@ -133,7 +133,7 @@ module liquid_staking::fees {
+     // Note that while it's technically exploitable, we allow lsts to be created with 0 mint/redeem fees.
+     // This is because having a 0 fee LST is useful in certain cases where mint/redemption can only be done by
+     // a single party. It is up to the pool creator to ensure that the fees are set correctly.
+-    fun validate_fees(fees: &FeeConfig) {
++    public fun validate_fees(fees: &FeeConfig) {
+         assert!(fees.sui_mint_fee_bps <= MAX_BPS, EInvalidFeeConfig);
+         assert!(fees.staked_sui_mint_fee_bps <= MAX_BPS, EInvalidFeeConfig);
+         assert!(fees.redeem_fee_bps <= MAX_REDEEM_FEE_BPS, EInvalidFeeConfig);

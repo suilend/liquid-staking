@@ -1,0 +1,70 @@
+name: Certora Prover 
+
+on:
+  pull_request:
+    branches:
+      - main
+      - certora
+  workflow_dispatch:
+
+jobs:
+  certora_run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install sui
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          suiup install -y sui@1.65.2 
+      - name: Sui version
+        run: |
+          sui -V
+          sui move -V
+      - name: Apply patch
+        run: ./certora/munges/munge.sh
+      - name: Submit Jobs to Certora Prover (Part I)
+        uses: Certora/certora-run-action@v2
+        with:
+          cli-version: "8.10.1"
+          cli-release: beta
+          ecosystem: sui
+          working-directory: certora/spec/
+          configurations: |-
+            confs/supply_control_decreases.conf
+            confs/supply_control_increases_p1.conf
+            confs/supply_control_increases_p2.conf
+            confs/accounting_no_lst_no_sui.conf
+            confs/accounting_total_sui_supply.conf
+            confs/accounting_value_conservation.conf
+            confs/fees.conf
+          job-name: "Verification Part I"
+          certora-key: ${{ secrets.CERTORAKEY }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Submit Jobs to Certora Prover (Part II)
+        uses: Certora/certora-run-action@v2
+        with:
+          cli-version: "8.10.1"
+          cli-release: beta
+          ecosystem: sui
+          working-directory: certora/spec/
+          configurations: |-
+            confs/no_arbitrage.conf
+            confs/solvency.conf
+            confs/solvency_monotonicity.conf
+            confs/validators_consistency_p1.conf
+            confs/validators_consistency_p2.conf
+            confs/validators_integrity.conf
+          job-name: "Verification Part II"
+          certora-key: ${{ secrets.CERTORAKEY }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

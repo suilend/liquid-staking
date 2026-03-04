@@ -1,0 +1,11 @@
+[package]
+name = "assumptions"
+edition = "2024.beta"
+
+[dependencies]
+liquid_staking = { local = "../../contracts" }
+cvlm = { git = "https://github.com/Certora/cvl-move-proto.git", subdir = "cvlm", rev = "main" }
+certora_sui_summaries = { git = "https://github.com/Certora/cvl-move-proto.git", subdir = "certora_sui_summaries",  rev = "main" }
+
+[addresses]
+assumptions = "0x0"
