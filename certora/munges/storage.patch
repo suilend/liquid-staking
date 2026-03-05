@@ -1,0 +1,151 @@
+diff --git a/contracts/sources/storage.move b/contracts/sources/storage.move
+index e729823..1023707 100644
+--- a/contracts/sources/storage.move
++++ b/contracts/sources/storage.move
+@@ -15,9 +15,13 @@ module liquid_staking::storage {
+     /* Constants */
+     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
+     const MAX_SUI_SUPPLY: u64 = 10_000_000_000 * 1_000_000_000;
+-    const MAX_VALIDATORS: u64 = 50;
++    const MAX_VALIDATORS: u64 = 5;
+     const ACTIVE_STAKE_REDEEM_OFFSET: u64 = 100;
+ 
++    public fun max_validators(): u64 {
++        MAX_VALIDATORS
++    }
++
+     /// The Storage struct holds all stake for the LST.
+     public struct Storage has store {
+         /// Sui balance. Unstake operations deposit SUI here.
+@@ -51,7 +55,7 @@ module liquid_staking::storage {
+         extra_fields: Bag,
+     }
+ 
+-    public(package) fun new(ctx: &mut TxContext): Storage {
++    public fun new(ctx: &mut TxContext): Storage {
+         Storage {
+             sui_pool: balance::zero(),
+             validator_infos: vector::empty(),
+@@ -62,43 +66,47 @@ module liquid_staking::storage {
+     }
+ 
+     /* Public View Functions */
+-    public(package) fun sui_pool(self: &Storage): &Balance<SUI> {
++    public fun sui_pool(self: &Storage): &Balance<SUI> {
+         &self.sui_pool
+     }
+ 
+-    public(package) fun validators(self: &Storage): &vector<ValidatorInfo> {
++    public fun validators(self: &Storage): &vector<ValidatorInfo> {
+         &self.validator_infos
+     }
+ 
+-    public(package) fun total_sui_supply(self: &Storage): u64 {
++    public fun total_sui_supply(self: &Storage): u64 {
+         self.total_sui_supply
+     }
+ 
+-    public(package) fun last_refresh_epoch(self: &Storage): u64 {
++    public fun last_refresh_epoch(self: &Storage): u64 {
+         self.last_refresh_epoch
+     }
+ 
+-    public(package) fun staking_pool_id(self: &ValidatorInfo): ID {
++    public fun staking_pool_id(self: &ValidatorInfo): ID {
+         self.staking_pool_id
+     }
+ 
+-    public(package) fun validator_address(self: &ValidatorInfo): address {
++    public fun validator_address(self: &ValidatorInfo): address {
+         self.validator_address
+     }
+ 
+-    public(package) fun active_stake(self: &ValidatorInfo): &Option<FungibleStakedSui> {
++    public fun active_stake(self: &ValidatorInfo): &Option<FungibleStakedSui> {
+         &self.active_stake
+     }
+ 
+-    public(package) fun inactive_stake(self: &ValidatorInfo): &Option<StakedSui> {
++    public fun inactive_stake(self: &ValidatorInfo): &Option<StakedSui> {
+         &self.inactive_stake
+     }
+ 
+-    public(package) fun exchange_rate(self: &ValidatorInfo): &PoolTokenExchangeRate {
++    public fun exchange_rate(self: &ValidatorInfo): &PoolTokenExchangeRate {
++        &self.exchange_rate
++    }
++
++    public fun exchange_rate_mut(self: &ValidatorInfo): &PoolTokenExchangeRate {
+         &self.exchange_rate
+     }
+ 
+-    public(package) fun total_sui_amount(self: &ValidatorInfo): u64 {
++    public fun total_sui_amount(self: &ValidatorInfo): u64 {
+         self.total_sui_amount
+     }
+ 
+@@ -118,7 +126,7 @@ module liquid_staking::storage {
+         i
+     }
+ 
+-    fun is_empty(self: &ValidatorInfo): bool {
++    public fun is_empty(self: &ValidatorInfo): bool {
+         self.active_stake.is_none() && self.inactive_stake.is_none() && self.total_sui_amount == 0
+     }
+ 
+@@ -129,10 +137,10 @@ module liquid_staking::storage {
+     /// - Moves any inactive stake that can be converted to active stake.
+     /// - Removes validators that have no stake.
+     /// Returns true if the storage was updated.
+-    public(package) fun refresh(
+-        self: &mut Storage,
+-        system_state: &mut SuiSystemState,
+-        ctx: &mut TxContext,
++    public fun refresh(
++        self: &mut Storage, 
++        system_state: &mut SuiSystemState, 
++        ctx: &mut TxContext
+     ): bool {
+         if (self.last_refresh_epoch == ctx.epoch()) {
+             return false
+@@ -197,7 +205,7 @@ module liquid_staking::storage {
+     // this may return none in the case where the staking pool is inactive or
+     // if sui system is currently in safe mode. In both these cases, the storage
+     // object has the latest exchange rate already.
+-    fun get_latest_exchange_rate(
++    public fun get_latest_exchange_rate(
+         self: &Storage,
+         staking_pool_id: &ID,
+         system_state: &mut SuiSystemState,
+@@ -219,10 +227,9 @@ module liquid_staking::storage {
+ 
+     /// Update the total sui amount for the validator and modify the
+     /// storage sui supply accordingly assumes the exchange rate is up to date
+-    fun refresh_validator_info(self: &mut Storage, i: u64) {
++    public fun refresh_validator_info(self: &mut Storage, i: u64) {
+         let validator_info = &mut self.validator_infos[i];
+         self.total_sui_supply = self.total_sui_supply - validator_info.total_sui_amount;
+-
+         let mut total_sui_amount = 0;
+         if (validator_info.active_stake.is_some()) {
+             let active_stake = validator_info.active_stake.borrow();
+@@ -568,8 +575,8 @@ module liquid_staking::storage {
+     }
+ 
+     /* Private functions */
+-    fun get_or_add_validator_index_by_staking_pool_id_mut(
+-        self: &mut Storage,
++    public fun get_or_add_validator_index_by_staking_pool_id_mut(
++        self: &mut Storage, 
+         system_state: &mut SuiSystemState,
+         staking_pool_id: ID,
+         ctx: &mut TxContext,
+@@ -620,7 +627,7 @@ module liquid_staking::storage {
+     }
+ 
+     /// copied directly from staking_pool.move
+-    fun get_sui_amount(exchange_rate: &PoolTokenExchangeRate, token_amount: u64): u64 {
++    public fun get_sui_amount(exchange_rate: &PoolTokenExchangeRate, token_amount: u64): u64 {
+         // When either amount is 0, that means we have no stakes with this pool.
+         // The other amount might be non-zero when there's dust left in the pool.
+         if (exchange_rate.sui_amount() == 0 || exchange_rate.pool_token_amount() == 0) {

@@ -1,0 +1,9 @@
+[package]
+name = "spec"
+edition = "2024.beta"
+
+[dependencies]
+liquid_staking = { local = "../../contracts" }
+cvlm = { git = "https://github.com/Certora/cvl-move-proto.git", subdir = "cvlm", rev = "sui-v1.55.0-no-contains" }
+certora_sui_summaries = { git = "https://github.com/Certora/cvl-move-proto.git", subdir = "certora_sui_summaries",  rev = "sui-v1.55.0-no-contains", rename-from = "certora" }
+sui_system = { override = true, git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-system", rev = "framework/testnet" }
