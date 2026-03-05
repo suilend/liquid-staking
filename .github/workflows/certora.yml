@@ -1,11 +1,8 @@
 name: Certora Prover 
 
 on:
-  pull_request:
-    branches:
-      - main
-      - certora
-  workflow_dispatch:
+  push:
+    branches: [cvlm]
 
 jobs:
   certora_run:
